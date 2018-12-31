@@ -7,7 +7,7 @@ Created on Sun Dec 30 16:14:43 2018
 
 from TopicRNN import TopicRNN
 from TopicOptimizer import loss_function
-from DataManager import DataManager, create_dataset
+from DataManager import DataManager
 from Parser import getParser
 import sys, os
 from tqdm import tqdm
@@ -22,11 +22,11 @@ args, _ = parser.parse_known_args(argv)
 torch.manual_seed(args.seed)
 
 manager = DataManager(args.datapath)
-train = create_dataset(manager.data['train'], manager.stop_words_index, args.batch)
-valid = create_dataset(manager.data['valid'], manager.stop_words_index, args.batch)
-test = create_dataset(manager.data['test'], manager.stop_words_index, args.batch)
+train = manager.create_dataset('train', args.batch)
+valid = manager.create_dataset('valid', args.batch)
+test = manager.create_dataset('test', args.batch)
 
-model = TopicRNN(args.rnn, len(manager.word2index)+4, args.embed, args.rnn_dim, args.infer_dim, args.topic, args.teacher)
+model = TopicRNN(args.rnn, len(manager.word2index)+4, len(manager.index2nonstop), args.embed, args.rnn_dim, args.infer_dim, args.topic, args.teacher)
 model.to(device=device)
 optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
@@ -39,9 +39,9 @@ if not args.test:
         pbar = tqdm(enumerate(train), total=len(train))
         CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
         for i, data in pbar:
-            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3], data[4])
+            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3], data[4], data[5])
             y_outputs = manager.compute_stopword(outputs)
-            CE, KLD, SCE = loss_function(word_p, data[3], indicator_p, y_outputs, mu, logvar, data[4])
+            CE, KLD, SCE = loss_function(word_p, data[4], indicator_p, y_outputs, mu, logvar, data[5])
             loss = CE + KLD + SCE
             loss.backward()
             CE_loss += CE.item()
@@ -60,9 +60,9 @@ if not args.test:
         CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
         with torch.no_grad():
             for i, data in pbar:
-                outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3], data[4], training=False)
+                outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3], data[4], data[5], training=False)
                 y_outputs = manager.compute_stopword(outputs)
-                CE, KLD, SCE = loss_function(word_p, data[3], indicator_p, y_outputs, mu, logvar, data[4])
+                CE, KLD, SCE = loss_function(word_p, data[4], indicator_p, y_outputs, mu, logvar, data[5])
                 CE_loss += CE.item()
                 KLD_loss += KLD.item()
                 SCE_loss += SCE.item()
@@ -73,5 +73,4 @@ if not args.test:
 else:
     pabr = tqdm(enumerate(test), total=len(test))
     #TODO
-    
     

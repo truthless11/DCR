@@ -17,18 +17,19 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class TopicRNN(nn.Module):
 
-    def __init__(self, rnn_type, nvoc, nembed, nhid, nhid_infer, ntopic, teacher_forcing=0.5, nlayers=1, dropout=0.05):
+    def __init__(self, rnn_type, nvoc, nvoc_nonstop, nembed, nhid, nhid_infer, ntopic, teacher_forcing=0.5, nlayers=1, dropout=0.05):
         super(TopicRNN, self).__init__()
         
         self.nhid = nhid #H
         self.nhid_infer = nhid_infer #E
         self.ntopic = ntopic #K
         self.nvoc = nvoc #C
+        self.nvoc_nonstop = nvoc_nonstop #C-
         self.nembed = nembed #V
         self.teacher_forcing = teacher_forcing
         self.encoder = Encoder(nvoc, nembed, nhid, rnn_cell=rnn_type, variable_lengths=True)
         
-        self.fc = nn.Linear(nhid, nhid_infer)
+        self.fc = nn.Linear(nvoc_nonstop, nhid_infer)
         self.fc_mu = nn.Linear(nhid_infer, nhid_infer)
         self.fc_sigma = nn.Linear(nhid_infer, nhid_infer)
         self.fc_theta = nn.Linear(nhid_infer, ntopic)
@@ -41,25 +42,24 @@ class TopicRNN(nn.Module):
         self.text_decoder = nn.Linear(nhid, nvoc)
         self.topic_decoder = nn.Linear(ntopic, nvoc)
 
-
-    def forward(self, x, x_len, x_stop, y, y_len, training=True, hidden=None):
+    def forward(self, x, x_len, x_stop, x_tf, y, y_len, training=True, hidden=None):
         """
         Parameters
         ----------
         x : (batch, sequence length)
         x_len : (batch)
         x_stop : (batch, sequence length)
+        x_tf: (batch, nonstop vocabulary size)
         y : (batch, target sequence length)
         y_len : (batch)
         """     
         batch_size = x.shape[0]
         context, hidden = self.encoder(x, x_len) #(batch, max_len, H), (nlayer*ndir, batch, H)
         
-        doc = context.sum(1) / x_len.unsqueeze(-1).expand(-1, self.nhid).float()  #(batch, H)
-        mu, log_sigma = self.encode(doc) #(batch, E), (batch, E)
+        mu, log_sigma = self.encode(x_tf) #(batch, E), (batch, E)
         # Compute noisy topic proportions given Gaussian parameters.
         Z = self.reparameterize(mu, log_sigma) #(batch, E)
-        theta = torch.softmax(self.fc_theta(Z), dim=1) #(batch, K)
+        theta = F.softmax(self.fc_theta(Z), dim=1) #(batch, K)
                 
         target_max_len = max(y_len)
         outputs = torch.zeros_like(y).long().to(device=device)
@@ -83,12 +83,12 @@ class TopicRNN(nn.Module):
             else:
                 stopword_predictions = torch.argmax(stopword_logits, dim=-1).unsqueeze(-1)
             
-            topic_additions = self.topic_decoder(theta) #(batch, C)
+            topic_additions = self.topic_decoder(theta) #(batch, C)            
             topic_additions[:, :2] = 0  # Padding & Unknowns will be treated as stops.
             topic_mask = (1 - stopword_predictions).expand(-1, self.nvoc)
             topic_additions = topic_additions * topic_mask.float()
             
-            probs = torch.softmax(logits + topic_additions, dim=1)
+            probs = F.softmax(logits + topic_additions, dim=1)
             if training:
                 outputs[:, t] = torch.multinomial(probs, 1).squeeze(1)
             else:
