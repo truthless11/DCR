@@ -9,10 +9,12 @@ from TopicRNN import TopicRNN
 from TopicOptimizer import loss_function
 from DataManager import DataManager, create_dataset
 from Parser import getParser
-import sys
+import sys, os
 from tqdm import tqdm
 import torch
 from torch import optim
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 argv = sys.argv[1:]
 parser = getParser()
@@ -25,9 +27,13 @@ valid = create_dataset(manager.data['valid'], manager.stop_words_index, args.bat
 test = create_dataset(manager.data['test'], manager.stop_words_index, args.batch)
 
 model = TopicRNN(args.rnn, len(manager.word2index)+4, args.embed, args.rnn_dim, args.infer_dim, args.topic, args.teacher)
+model.to(device=device)
 optimizer = optim.Adam(model.parameters(), lr=args.lr)
 
 if not args.test:
+    if not os.path.exists('checkpoints'):
+        os.mkdir('checkpoints')
+        
     for epoch in range(args.epoch):
         model.train()
         pbar = tqdm(enumerate(train), total=len(train))
@@ -47,13 +53,14 @@ if not args.test:
                 SCE_loss /= args.print_per_batch
                 pbar.set_description('====> Epoch: {}, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}'.format(i, CE_loss, KLD_loss, SCE_loss))
                 CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
+        torch.save(model, "checkpoints/model_{0}_{1}".format(args.logfile, epoch))
         
         model.eval()
         pbar = tqdm(enumerate(valid), total=len(valid))
         CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
         with torch.no_grad():
             for i, data in pbar:
-                outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3], data[4])
+                outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3], data[4], training=False)
                 y_outputs = manager.compute_stopword(outputs)
                 CE, KLD, SCE = loss_function(word_p, data[3], indicator_p, y_outputs, mu, logvar, data[4])
                 CE_loss += CE.item()

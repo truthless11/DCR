@@ -62,12 +62,12 @@ class TopicRNN(nn.Module):
         theta = torch.softmax(self.fc_theta(Z), dim=1) #(batch, K)
                 
         target_max_len = max(y_len)
-        outputs = torch.zeros_like(y).to(device=device)
-        word_probs = Variable(torch.zeros(batch_size, target_max_len, self.nvoc))
-        indicator_probs = Variable(torch.zeros(batch_size, target_max_len, 2))
+        outputs = torch.zeros_like(y).long().to(device=device)
+        word_probs = Variable(torch.zeros(batch_size, target_max_len, self.nvoc)).to(device=device) 
+        indicator_probs = Variable(torch.zeros(batch_size, target_max_len, 2)).to(device=device) 
         
         use_teacher_forcing = random.random() < self.teacher_forcing
-        token_input = Variable(torch.LongTensor([GO] * batch_size)) 
+        token_input = Variable(torch.LongTensor([GO] * batch_size)).to(device=device) 
         rnn_input = self.encoder.embedding(token_input) #(batch, V)
 
         for t in range(target_max_len):
@@ -81,7 +81,7 @@ class TopicRNN(nn.Module):
             if training:
                 stopword_predictions = torch.multinomial(stopword_logits, 1) #(batch)
             else:
-                stopword_predictions = torch.argmax(stopword_logits, dim=-1)
+                stopword_predictions = torch.argmax(stopword_logits, dim=-1).unsqueeze(-1)
             
             topic_additions = self.topic_decoder(theta) #(batch, C)
             topic_additions[:, :2] = 0  # Padding & Unknowns will be treated as stops.
@@ -92,7 +92,7 @@ class TopicRNN(nn.Module):
             if training:
                 outputs[:, t] = torch.multinomial(probs, 1).squeeze(1)
             else:
-                outputs[:, t] = torch.argmax(probs, dim=-1).squeeze(1)
+                outputs[:, t] = torch.argmax(probs, dim=-1)
                 
             word_probs[:, t, :] = logits + topic_additions
             indicator_probs[:, t, :] = stopword_logits
