@@ -21,6 +21,8 @@ argv = sys.argv[1:]
 parser = getParser()
 args, _ = parser.parse_known_args(argv)
 print(args)
+with open(args.log + '.txt', 'a') as f:
+    f.write('{0}\n'.format(str(args)))
 torch.manual_seed(args.seed)
 
 manager = DataManager(args.data)
@@ -49,6 +51,7 @@ if not args.test:
         pbar = tqdm(enumerate(train), total=len(train))
         CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
         for i, data in pbar:
+            optimizer.zero_grad()
             outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], 
                                                              data[3], data[4], data[5])
             y_outputs = manager.compute_stopword(outputs)
@@ -58,6 +61,7 @@ if not args.test:
             CE_loss += CE.item()
             KLD_loss += KLD.item()
             SCE_loss += SCE.item()
+            optimizer.step()
             if (i+1) % args.print_per_batch == 0:
                 CE_loss /= args.print_per_batch
                 KLD_loss /= args.print_per_batch
@@ -86,7 +90,7 @@ if not args.test:
             pbar.set_description('====> Valid set loss, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}'.format(CE_loss, 
                                  KLD_loss, SCE_loss))
         with open(args.log + '.txt', 'a') as f:
-            f.write('====> Epoch:{:d}, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}\n'.format(epoch, CE_loss, 
+            f.write('Epoch:{:d}, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}\n'.format(epoch, CE_loss, 
                                  KLD_loss, SCE_loss))
         
 else:

@@ -10,7 +10,7 @@ import argparse
 def getParser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--log', type=str, default='DCR', help="Filename of log file")
-    parser.add_argument('--lr', type=float, default=0.0001, help="Learning rate")
+    parser.add_argument('--lr', type=float, default=0.01, help="Learning rate")
     parser.add_argument('--teacher', type=float, default=0.5, help="Teacher forcing ratio")
     parser.add_argument('--seed', type=int, default=1, help="Random seed")
     parser.add_argument('--rnn', type=str, default='GRU', help="Rnn cell type")
@@ -24,5 +24,5 @@ def getParser():
     parser.add_argument('--load', type=str, default='', help="Directory to load model")
     parser.add_argument('--save', type=str, default='checkpoints', help="Directory to save model")
     parser.add_argument('--test', type=bool, default=False, help="Set to True to inference")
-    parser.add_argument('--data', type=str, default='./data/', help="Data directory")
+    parser.add_argument('--data', type=str, default='data', help="Data directory")
     return parser

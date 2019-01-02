@@ -24,7 +24,7 @@ class DataManager:
         self.text = {}
         for name in ["train", "valid", "test"]:
             self.text[name] = []
-            with open(path+(name+".txt")) as fl:
+            with open("{0}/{1}.txt".format(path, name)) as fl:
                 lines = fl.readlines()
                 for line in lines:
                     self.text[name].append(line.strip().lower().split('\t'))
@@ -94,6 +94,7 @@ class DataManager:
             tensor_src, tensor_trg = torch.LongTensor(src), torch.LongTensor(trg)
             src_seqs.append(tensor_src)
             trg_seqs.append(tensor_trg)
+            
             src_stop, trg_stop = torch.zeros_like(tensor_src), torch.zeros_like(tensor_trg)
             for i, index in enumerate(src):
                 if index in self.stop_words_index:
@@ -103,6 +104,7 @@ class DataManager:
                     trg_stop[i] = 1
             src_stops.append(src_stop)
             trg_stops.append(trg_stop)
+            
             src_tf, trg_tf = torch.zeros(nonstop_voc_size), torch.zeros(nonstop_voc_size)
             for i, index in enumerate(src):
                 if src_stop[i].item() == 0:
@@ -116,9 +118,10 @@ class DataManager:
                 trg_tf /= trg_tf.sum()
             src_tfs.append(src_tf)
             trg_tfs.append(trg_tf)
+            
         dataset = Dataset(src_seqs, trg_seqs, src_stops, trg_stops, src_tfs, trg_tfs)
         dataloader = data.DataLoader(dataset, batch_size, True, collate_fn=pad_packed_collate)
-        return dataloader        
+        return dataloader
             
     def compute_stopword(self, y):
         res = torch.zeros_like(y).to(device=device)
