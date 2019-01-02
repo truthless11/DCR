@@ -17,7 +17,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class TopicRNN(nn.Module):
 
-    def __init__(self, rnn_type, nvoc, nvoc_nonstop, nembed, nhid, nhid_infer, ntopic, teacher_forcing=0.5, nlayers=1, dropout=0.05):
+    def __init__(self, rnn_type, nvoc, nvoc_nonstop, nembed, nhid, nhid_infer,
+                 ntopic, teacher_forcing=0.5, nlayers=1, dropout=0.05):
         super(TopicRNN, self).__init__()
         
         self.nhid = nhid #H
@@ -42,7 +43,7 @@ class TopicRNN(nn.Module):
         self.text_decoder = nn.Linear(nhid, nvoc)
         self.topic_decoder = nn.Linear(ntopic, nvoc)
 
-    def forward(self, x, x_len, x_stop, x_tf, y, y_len, training=True, hidden=None):
+    def forward(self, x, x_len, x_stop, x_tf, y, y_len, training=True, use_teacher_forcing='random'):
         """
         Parameters
         ----------
@@ -66,7 +67,8 @@ class TopicRNN(nn.Module):
         word_probs = Variable(torch.zeros(batch_size, target_max_len, self.nvoc)).to(device=device) 
         indicator_probs = Variable(torch.zeros(batch_size, target_max_len, 2)).to(device=device) 
         
-        use_teacher_forcing = random.random() < self.teacher_forcing
+        if use_teacher_forcing == 'random':
+            use_teacher_forcing = random.random() < self.teacher_forcing
         token_input = Variable(torch.LongTensor([GO] * batch_size)).to(device=device) 
         rnn_input = self.encoder.embedding(token_input) #(batch, V)
 
@@ -94,10 +96,10 @@ class TopicRNN(nn.Module):
             else:
                 outputs[:, t] = torch.argmax(probs, dim=-1)
                 
-            word_probs[:, t, :] = logits + topic_additions
+            word_probs[:, t, :] = probs
             indicator_probs[:, t, :] = stopword_logits
         
-            if training and use_teacher_forcing:
+            if use_teacher_forcing:
                 rnn_input = self.encoder.embedding(y[:, t].clone()) #(batch, V)
             else:
                 rnn_input = self.encoder.embedding(outputs[:, t].clone())
@@ -114,7 +116,8 @@ class TopicRNN(nn.Module):
         return eps.mul(std).add_(mu)
 
 class Encoder(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size, input_dropout_p=0, dropout_p=0, n_layers=1, rnn_cell='GRU', variable_lengths=False, embedding=None, update_embedding=True):
+    def __init__(self, vocab_size, embed_size, hidden_size, input_dropout_p=0, dropout_p=0, n_layers=1, 
+                 rnn_cell='GRU', variable_lengths=False, embedding=None, update_embedding=True):
         super(Encoder, self).__init__()
         
         self.vocab_size = vocab_size
@@ -143,8 +146,10 @@ class Encoder(nn.Module):
             input_lengths (list of int, optional): A list that contains the lengths of sequences
               in the mini-batch
         Returns: output, hidden
-            - **output** (batch, seq_len, hidden_size): variable containing the encoded features of the input sequence
-            - **hidden** (num_layers * num_directions, batch, hidden_size): variable containing the features in the hidden state h
+            - **output** (batch, seq_len, hidden_size): variable containing the encoded features of
+              the input sequence
+            - **hidden** (num_layers * num_directions, batch, hidden_size): variable containing the
+              features in the hidden state h
         """
         embedded = self.embedding(input_var)
         embedded = self.input_dropout(embedded)

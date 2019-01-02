@@ -50,13 +50,14 @@ class DataManager:
             if not re.search(r'\w', key):
                 punctuation.append(i + 4)
         self.stop_words_index = set(punctuation)
-        self.stop_words_index |= set([self.word2index[word] for word in STOP_WORDS if word in self.word2index])
+        self.stop_words_index |= set([self.word2index[word] for word in STOP_WORDS 
+                                      if word in self.word2index])
         
         # compute tf
         max_voc = max(self.word2index.values())
         self.index2nonstop = {}
         cnt = 0
-        for i in range(4, max_voc):
+        for i in range(4, max_voc+1):
             if i not in self.stop_words_index:
                 self.index2nonstop[i] = cnt
                 cnt += 1
@@ -69,10 +70,12 @@ class DataManager:
                 indices = [[],[]]
                 for i in [0, 1]:
                     words = item[i].split()
-                    indices[i] = [self.word2index[word] if word in self.word2index else UNK for word in words]
+                    indices[i] = [self.word2index[word] if word in self.word2index 
+                                  else UNK for word in words]
                     if i == 1: # answer from system
                         indices[1].append(EOS)
-                nonstop_indices = [[self.index2nonstop[index] for index in indices[i] if index in self.index2nonstop] for i in [0, 1]]
+                nonstop_indices = [[self.index2nonstop[index] for index in indices[i] 
+                                    if index in self.index2nonstop] for i in [0, 1]]
                 tf = [torch.zeros(cnt), torch.zeros(cnt)]
                 for i in [0, 1]:
                     normal = len(nonstop_indices[i])
@@ -165,8 +168,7 @@ def pad_packed_collate(batch_data):
     src_stops, _ = merge(src_stops)
     trg_seqs, trg_lens = merge(trg_seqs)
     trg_stops, _ = merge(trg_stops)
-    results = [src_seqs, src_lens, src_stops, torch.stack(src_tfs).to(device=device), trg_seqs, trg_lens, trg_stops, torch.stack(trg_tfs)]
-    for i in [0, 1, 2, 4]:
-        results[i] = torch.LongTensor(results[i]).to(device=device)
-    return results
+    return (src_seqs.to(device=device), torch.LongTensor(src_lens).to(device=device), 
+            src_stops.to(device=device), torch.stack(src_tfs).to(device=device), 
+            trg_seqs.to(device=device), trg_lens, trg_stops, torch.stack(trg_tfs))
     
