@@ -5,7 +5,7 @@ Created on Sun Dec 30 16:14:04 2018
 @author: truthless
 """
 
-import re
+import re, random
 from stop import STOP_WORDS
 import torch
 import torch.utils.data as data
@@ -41,7 +41,7 @@ class DataManager:
                     else:
                         wordscount[word] = 1
         wordssorted = sorted(wordscount.items(), key = lambda d: (d[1],d[0]), reverse=True) 
-        self.word2index = {}
+        self.word2index = {'<PAD>':0, '<UNK>':1, '<GO>':2, '<EOS>':3}
         punctuation = [PAD, UNK, GO, EOS]
         for i, (key, value) in enumerate(wordssorted):
             if value == 1:
@@ -52,12 +52,13 @@ class DataManager:
         self.stop_words_index = set(punctuation)
         self.stop_words_index |= set([self.word2index[word] for word in STOP_WORDS 
                                       if word in self.word2index])
+        self.index2word = dict((v, k) for k, v in self.word2index.items())
         
         # compute tf
-        max_voc = max(self.word2index.values())
+        len_voc = len(self.word2index.values())
         self.index2nonstop = {}
         cnt = 0
-        for i in range(4, max_voc+1):
+        for i in range(len_voc):
             if i not in self.stop_words_index:
                 self.index2nonstop[i] = cnt
                 cnt += 1
@@ -129,6 +130,20 @@ class DataManager:
             words_index = row.tolist()
             res[i] = torch.LongTensor([int(index in self.stop_words_index) for index in words_index])
         return res
+    
+    def interpret(self, preds, refs, lens, f):
+        i = random.randrange(0, len(lens))
+        l = lens[i]
+        for j in range(l):
+            print(self.index2word[preds[i][j].item()], end=' ')
+            f.write('{0} '.format(self.index2word[preds[i][j].item()]))
+        print()
+        f.write('\n')
+        for j in range(l):
+            print(self.index2word[refs[i][j].item()], end=' ')
+            f.write('{0} '.format(self.index2word[refs[i][j].item()]))
+        print()
+        f.write('\n')
 
 class Dataset(data.Dataset):
     

@@ -30,7 +30,7 @@ train = manager.create_dataset('train', args.batch)
 valid = manager.create_dataset('valid', args.batch)
 test = manager.create_dataset('test', args.batch)
 
-model = TopicRNN(args.rnn, len(manager.word2index)+4, len(manager.index2nonstop), 
+model = TopicRNN(args.rnn, len(manager.word2index), len(manager.index2nonstop), 
                  args.embed, args.rnn_dim, args.infer_dim, args.topic, args.teacher)
 model.to(device=device)
 if args.load != '':
@@ -66,7 +66,7 @@ if not args.test:
                 CE_loss /= args.print_per_batch
                 KLD_loss /= args.print_per_batch
                 SCE_loss /= args.print_per_batch
-                pbar.set_description('====> Epoch: {}, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}'.format(i,
+                pbar.set_description('====> Iteration: {}, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}'.format(i,
                                      CE_loss, KLD_loss, SCE_loss))
                 CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
         torch.save(model, "{0}/model_{1}_{2}".format(args.save, args.log, epoch))
@@ -84,6 +84,9 @@ if not args.test:
                 CE_loss += CE.item()
                 KLD_loss += KLD.item()
                 SCE_loss += SCE.item()
+                if i == 0:
+                    with open(args.log + '.txt', 'a') as f:
+                        manager.interpret(outputs, data[4], data[5], f)
             CE_loss /= len(valid)
             KLD_loss /= len(valid)
             SCE_loss /= len(valid)
