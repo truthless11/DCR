@@ -7,6 +7,7 @@ Created on Sun Dec 30 16:14:04 2018
 
 import re, random
 from stop import STOP_WORDS
+import numpy as np
 import torch
 import torch.utils.data as data
 
@@ -18,15 +19,14 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DataManager:
     
-    def __init__(self, path):
+    def __init__(self, path, use_pretrain_word2vec, dim):
                
         #read text
         self.text = {}
         for name in ["train", "valid", "test"]:
             self.text[name] = []
             with open("{0}/{1}.txt".format(path, name)) as fl:
-                lines = fl.readlines()
-                for line in lines:
+                for line in fl:
                     self.text[name].append(line.strip().lower().split('\t'))
 
         #arrange words
@@ -53,6 +53,20 @@ class DataManager:
         self.stop_words_index |= set([self.word2index[word] for word in STOP_WORDS 
                                       if word in self.word2index])
         self.index2word = dict((v, k) for k, v in self.word2index.items())
+        
+        #load word vector
+        if use_pretrain_word2vec:
+            self.vector = 0.1 * np.random.rand(len(self.word2index), dim)
+            with open("{0}/vector.txt".format(path)) as fl:
+                for line in fl:
+                    vec = line.strip().split()
+                    word = vec[0].lower()
+                    vec = list(map(float, vec[1:]))
+                    if word in self.word2index:
+                        self.vector[self.word2index[word]] = np.asarray(vec)
+            self.vector = torch.Tensor(self.vector)
+        else:
+            self.vector = None
         
         # compute tf
         len_voc = len(self.word2index.values())

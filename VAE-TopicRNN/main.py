@@ -25,12 +25,12 @@ with open(args.log + '.txt', 'a') as f:
     f.write('{0}\n'.format(str(args)))
 torch.manual_seed(args.seed)
 
-manager = DataManager(args.data)
+manager = DataManager(args.data, args.use_word2vec, args.embed)
 train = manager.create_dataset('train', args.batch)
 valid = manager.create_dataset('valid', args.batch)
 test = manager.create_dataset('test', args.batch)
 
-model = TopicRNN(args.rnn, len(manager.word2index), len(manager.index2nonstop), 
+model = TopicRNN(args.rnn, manager.vector, len(manager.word2index), len(manager.index2nonstop), 
                  args.embed, args.rnn_dim, args.infer_dim, args.topic, args.teacher)
 model.to(device=device)
 if args.load != '':

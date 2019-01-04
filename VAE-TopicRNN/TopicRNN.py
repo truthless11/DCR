@@ -17,8 +17,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class TopicRNN(nn.Module):
 
-    def __init__(self, rnn_type, nvoc, nvoc_nonstop, nembed, nhid, nhid_infer,
-                 ntopic, teacher_forcing=0.5, nlayers=1, dropout=0.05):
+    def __init__(self, rnn_type, word_vector, nvoc, nvoc_nonstop, nembed, nhid, nhid_infer,
+                 ntopic, teacher_forcing=0.5, nlayers=1, dropout=0):
         super(TopicRNN, self).__init__()
         
         self.nhid = nhid #H
@@ -28,7 +28,8 @@ class TopicRNN(nn.Module):
         self.nvoc_nonstop = nvoc_nonstop #C-
         self.nembed = nembed #V
         self.teacher_forcing = teacher_forcing
-        self.encoder = Encoder(nvoc, nembed, nhid, rnn_cell=rnn_type, variable_lengths=True)
+        self.encoder = Encoder(nvoc, nembed, nhid, rnn_cell=rnn_type, variable_lengths=True,
+                               embedding=word_vector)
         
         self.fc = nn.Linear(nvoc_nonstop, nhid_infer)
         self.fc_mu = nn.Linear(nhid_infer, nhid_infer)
