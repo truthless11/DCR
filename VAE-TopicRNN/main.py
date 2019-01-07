@@ -54,8 +54,7 @@ if not args.test:
             optimizer.zero_grad()
             outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], 
                                                              data[3], data[4], data[5])
-            y_outputs = manager.compute_stopword(outputs)
-            CE, KLD, SCE = loss_function(word_p, data[4], indicator_p, y_outputs, mu, logvar, data[5])
+            CE, KLD, SCE = loss_function(word_p, data[4], indicator_p, data[6], mu, logvar, data[5])
             loss = CE + KLD + SCE
             loss.backward()
             CE_loss += CE.item()
@@ -79,8 +78,7 @@ if not args.test:
                 outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], 
                                                                  data[3], data[4], data[5], 
                                                                  training=False, use_teacher_forcing=False)
-                y_outputs = manager.compute_stopword(outputs)
-                CE, KLD, SCE = loss_function(word_p, data[4], indicator_p, y_outputs, mu, logvar, data[5])
+                CE, KLD, SCE = loss_function(word_p, data[4], indicator_p, data[6], mu, logvar, data[5])
                 CE_loss += CE.item()
                 KLD_loss += KLD.item()
                 SCE_loss += SCE.item()

@@ -198,5 +198,5 @@ def pad_packed_collate(batch_data):
     trg_stops, _ = merge(trg_stops)
     return (src_seqs.to(device=device), torch.LongTensor(src_lens).to(device=device), 
             src_stops.to(device=device), torch.stack(src_tfs).to(device=device), 
-            trg_seqs.to(device=device), trg_lens, trg_stops, torch.stack(trg_tfs))
+            trg_seqs.to(device=device), trg_lens, trg_stops.to(device=device), torch.stack(trg_tfs))
     

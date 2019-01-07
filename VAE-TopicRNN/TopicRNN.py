@@ -87,7 +87,7 @@ class TopicRNN(nn.Module):
                 stopword_predictions = torch.argmax(stopword_logits, dim=-1).unsqueeze(-1)
             
             topic_additions = self.topic_decoder(theta) #(batch, C)            
-            topic_additions[:, :2] = 0  # Padding & Unknowns will be treated as stops.
+            topic_additions[:, :4] = 0  # Padding & Unknowns will be treated as stops.
             topic_mask = (1 - stopword_predictions).expand(-1, self.nvoc)
             topic_additions = topic_additions * topic_mask.float()
             

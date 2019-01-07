@@ -27,7 +27,7 @@ def language_model_p(refs, word_p, lens):
     p = 0
     for i, l in enumerate(lens):
         for j in range(l):
-            p += np.log(word_p[i, j, refs[i, j]].item())
+            p += np.log(word_p[i, j, refs[i, j]].item() + 1e-100)
     return p
 
 def perplexity(p, N):
