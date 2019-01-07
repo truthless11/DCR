@@ -5,7 +5,7 @@ Created on Sun Dec 30 16:14:04 2018
 @author: truthless
 """
 
-import re, random
+import random
 from stop import STOP_WORDS
 import numpy as np
 import torch
@@ -42,16 +42,12 @@ class DataManager:
                         wordscount[word] = 1
         wordssorted = sorted(wordscount.items(), key = lambda d: (d[1],d[0]), reverse=True) 
         self.word2index = {'<PAD>':0, '<UNK>':1, '<GO>':2, '<EOS>':3}
-        punctuation = [PAD, UNK, GO, EOS]
         for i, (key, value) in enumerate(wordssorted):
-            if value == 1:
+            if value == 20:
                 break
             self.word2index[key] = i + 4 #PAD,UNK,GO,EOS
-            if not re.search(r'\w', key):
-                punctuation.append(i + 4)
-        self.stop_words_index = set(punctuation)
-        self.stop_words_index |= set([self.word2index[word] for word in STOP_WORDS 
-                                      if word in self.word2index])
+        self.stop_words_index = set([PAD, UNK, GO, EOS])
+        self.stop_words_index |= set([self.word2index[word] for word in STOP_WORDS])
         self.index2word = dict((v, k) for k, v in self.word2index.items())
         
         #load word vector
