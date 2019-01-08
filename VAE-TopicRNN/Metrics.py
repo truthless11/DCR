@@ -7,6 +7,7 @@ Created on Tue Jan  1 11:56:26 2019
 
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 import numpy as np
+import torch.nn.functional as F
 
 smoothie = SmoothingFunction().method4
 
@@ -25,9 +26,10 @@ def blue(refs, hyps, lens):
 
 def language_model_p(refs, word_p, lens):
     p = 0
+    probs = F.softmax(word_p, dim=-1)
     for i, l in enumerate(lens):
         for j in range(l):
-            p += np.log(word_p[i, j, refs[i, j]].item() + 1e-100)
+            p += np.log(probs[i, j, refs[i, j]].item() + 1e-100)
     return p
 
 def perplexity(p, N):
