@@ -44,7 +44,7 @@ class TopicRNN(nn.Module):
         self.text_decoder = nn.Linear(nhid, nvoc)
         self.topic_decoder = nn.Linear(ntopic, nvoc)
 
-    def forward(self, x, x_len, x_stop, x_tf, y, y_len, training=True, use_teacher_forcing='random'):
+    def forward(self, x, x_len, x_stop, x_tf, y, y_len, training=True):
         """
         Parameters
         ----------
@@ -68,8 +68,7 @@ class TopicRNN(nn.Module):
         word_probs = Variable(torch.zeros(batch_size, target_max_len, self.nvoc)).to(device=device) 
         indicator_probs = Variable(torch.zeros(batch_size, target_max_len, 2)).to(device=device) 
         
-        if use_teacher_forcing == 'random':
-            use_teacher_forcing = random.random() < self.teacher_forcing
+        use_teacher_forcing = random.random() < self.teacher_forcing if training else False
         token_input = Variable(torch.LongTensor([GO] * batch_size)).to(device=device) 
         rnn_input = self.encoder.embedding(token_input) #(batch, V)
 
@@ -81,10 +80,7 @@ class TopicRNN(nn.Module):
             logits = self.text_decoder(rnn_output) #(batch, C)
                 
             stopword_logits = torch.sigmoid(self.fc_stop_word(rnn_output)) #(batch, 2)
-            if training:
-                stopword_predictions = torch.multinomial(stopword_logits, 1) #(batch)
-            else:
-                stopword_predictions = torch.argmax(stopword_logits, dim=-1).unsqueeze(-1)
+            stopword_predictions = torch.argmax(stopword_logits, dim=-1).unsqueeze(-1)
             
             topic_additions = self.topic_decoder(theta) #(batch, C)            
             topic_additions[:, :4] = 0  # Padding & Unknowns will be treated as stops.
@@ -92,18 +88,16 @@ class TopicRNN(nn.Module):
             topic_additions = topic_additions * topic_mask.float()
             
             probs = F.softmax(logits + topic_additions, dim=1)
-            if training:
-                outputs[:, t] = torch.multinomial(probs, 1).squeeze(1)
-            else:
-                outputs[:, t] = torch.argmax(probs, dim=-1)
+            results = torch.argmax(probs, dim=-1).detach()
+            outputs[:, t] = results
                 
-            word_probs[:, t, :] = probs
+            word_probs[:, t, :] = logits + topic_additions
             indicator_probs[:, t, :] = stopword_logits
         
             if use_teacher_forcing:
-                rnn_input = self.encoder.embedding(y[:, t].clone()) #(batch, V)
+                rnn_input = self.encoder.embedding(y[:, t]) #(batch, V)
             else:
-                rnn_input = self.encoder.embedding(outputs[:, t].clone())
+                rnn_input = self.encoder.embedding(results)
         
         return outputs, word_probs, indicator_probs, mu, log_sigma
     
