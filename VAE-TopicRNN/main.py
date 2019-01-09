@@ -25,7 +25,7 @@ with open(args.log + '.txt', 'a') as f:
     f.write('{0}\n'.format(str(args)))
 torch.manual_seed(args.seed)
 
-manager = DataManager(args.data, args.use_word2vec, args.embed)
+manager = DataManager(args.data, args.no_wordvec, args.embed, args.context_len)
 train = manager.create_dataset('train', args.batch)
 valid = manager.create_dataset('valid', args.batch)
 test = manager.create_dataset('test', args.batch)
@@ -52,9 +52,9 @@ if not args.test:
         CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
         for i, data in pbar:
             optimizer.zero_grad()
-            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3],
-                                                             data[4], data[6])
-            CE, KLD, SCE = loss_function(word_p, data[3], indicator_p, data[5], mu, logvar, data[4])
+            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2],
+                                                             data[3], data[5])
+            CE, KLD, SCE = loss_function(word_p, data[2], indicator_p, data[4], mu, logvar, data[3])
             loss = CE + KLD + SCE
             loss.backward()
             CE_loss += CE.item()
@@ -75,16 +75,16 @@ if not args.test:
         CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
         with torch.no_grad():
             for i, data in pbar:
-                outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3],
-                                                                 data[4], data[6], 
+                outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2],
+                                                                 data[3], data[5],
                                                                  training=False)
-                CE, KLD, SCE = loss_function(word_p, data[3], indicator_p, data[5], mu, logvar, data[4])
+                CE, KLD, SCE = loss_function(word_p, data[2], indicator_p, data[4], mu, logvar, data[3])
                 CE_loss += CE.item()
                 KLD_loss += KLD.item()
                 SCE_loss += SCE.item()
                 if i == 0:
                     with open(args.log + '.txt', 'a') as f:
-                        manager.interpret(outputs, data[3], data[4], f)
+                        manager.interpret(outputs, data[2], data[3], f)
             CE_loss /= len(valid)
             KLD_loss /= len(valid)
             SCE_loss /= len(valid)
@@ -100,16 +100,16 @@ else:
     bleu_score, L, p, N = 0, 0, 0, 0
     with torch.no_grad():
         for i, data in pbar:
-            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3],
-                                                             data[4], data[6],
+            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2],
+                                                             data[3], data[5],
                                                              training=False)
-            bleu_score += bleu(data[3], outputs, data[4])
-            L += len(data[4])
-            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3],
-                                                             data[4], data[6],
+            bleu_score += bleu(data[2], outputs, data[3])
+            L += len(data[3])
+            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2],
+                                                             data[3], data[5],
                                                              training=False)
-            p += language_model_p(data[3], word_p, data[4])
-            N += sum(data[4])
+            p += language_model_p(data[2], word_p, data[3])
+            N += sum(data[3])
     bleu_score /= L
     perplexity_score = perplexity(p, N)
     print('Test set bleu:{:.4f}, Perplexity:{:.4f}'.format(bleu_score, perplexity_score))

@@ -23,7 +23,8 @@ def getParser():
     parser.add_argument('--print_per_batch', type=int, default=20, help="Print results every XXX batches")
     parser.add_argument('--load', type=str, default='', help="Directory to load model")
     parser.add_argument('--save', type=str, default='checkpoints', help="Directory to save model")
-    parser.add_argument('--test', type=bool, default=False, help="Set to True to inference")
-    parser.add_argument('--data', type=str, default='data2', help="Data directory")
-    parser.add_argument('--use_word2vec', type=bool, default=True, help="Set to True to use pretrained word2vec")
+    parser.add_argument('--test', type=bool, default=False, help="Set to inference")
+    parser.add_argument('--data', type=str, default='data', help="Data directory")
+    parser.add_argument('--no_wordvec', type=bool, default=False, help="Set to use random word2vec")
+    parser.add_argument('--context_len', type=int, default=3, help="Length of dialogue context used in model")
     return parser

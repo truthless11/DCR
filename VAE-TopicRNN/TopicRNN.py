@@ -45,26 +45,23 @@ class TopicRNN(nn.Module):
         self.text_decoder = nn.Linear(nhid, nvoc)
         self.topic_decoder = nn.Linear(ntopic, nvoc)
 
-    def forward(self, x, x_seq_len, x_uttr_len, y, y_len, y_tf, training=True):
+    def forward(self, x, x_len, y, y_len, y_tf, training=True):
         """
         Parameters
         ----------
         x : (batch, sequence length, utterance length)
-        x_seq_len : (batch, sequence length)
-        x_uttr_len : (batch)
+        x_len : (batch, sequence length)
         y : (batch, target sequence length)
         y_len : (batch)
         y_tf: (batch, nonstop vocabulary size)
         """     
         batch_size = x.shape[0]
         sequence_size = x.shape[1]
-        context = Variable(torch.zeros(sequence_size, batch_size, self.nhid))
+        context = Variable(torch.zeros(sequence_size, batch_size, self.nhid)).to(device=device)
         for t in range(sequence_size):
-            _, hidden = self.encoder(x[:, t, :], x_seq_len[:, t]) #(batch, max_len, H), (nlayer*ndir, batch, H)
+            _, hidden = self.encoder(x[:, t, :], x_len[:, t]) #(batch, max_len, H), (nlayer*ndir, batch, H)
             context[t] = hidden
-        
-        context = pack_padded_sequence(context, x_uttr_len)
-        _, hidden = self.rnn_context(context) #(nlayer*ndir, batch, H)
+        _, hidden = self.rnn_context(context) #, (nlayer*ndir, batch, H)
         
         mu, log_sigma = self.encode(y_tf) #(batch, E), (batch, E)
         # Compute noisy topic proportions given Gaussian parameters.

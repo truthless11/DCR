@@ -19,7 +19,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class DataManager:
     
-    def __init__(self, path, use_pretrain_word2vec, dim):
+    def __init__(self, path, no_pretrain_word2vec, dim, context_len):
                
         #read text
         self.text = {}
@@ -27,8 +27,9 @@ class DataManager:
             self.text[name] = []
             with open("{0}/{1}.txt".format(path, name)) as fl:
                 for line in fl:
-                    utterances = line.strip('\n').lower().split('\t')
-                    self.text[name].append([utterances[:-1], utterances[-1]]) # history, answer
+                    utterances = line.strip().lower().split('\t')
+                    utterances = [''] * (context_len - len(utterances)) + utterances
+                    self.text[name].append([utterances[-context_len:-1], utterances[-1]])
 
         #arrange words
         wordscount = {}
@@ -44,7 +45,7 @@ class DataManager:
         wordssorted = sorted(wordscount.items(), key = lambda d: (d[1],d[0]), reverse=True) 
         self.word2index = {'<PAD>':0, '<UNK>':1, '<GO>':2, '<EOS>':3}
         for i, (key, value) in enumerate(wordssorted):
-            if value == 1:
+            if value == 5:
                 break
             self.word2index[key] = i + 4 #PAD,UNK,GO,EOS
         self.stop_words_index = set([PAD, UNK, GO, EOS])
@@ -53,7 +54,9 @@ class DataManager:
         self.index2word = dict((v, k) for k, v in self.word2index.items())
         
         #load word vector
-        if use_pretrain_word2vec:
+        if no_pretrain_word2vec:
+            self.vector = None
+        else:
             self.vector = 0.1 * np.random.rand(len(self.word2index), dim)
             with open("{0}/vector.txt".format(path)) as fl:
                 for line in fl:
@@ -62,9 +65,7 @@ class DataManager:
                     vec = list(map(float, vec[1:]))
                     if word in self.word2index:
                         self.vector[self.word2index[word]] = np.asarray(vec)
-            self.vector = torch.Tensor(self.vector)
-        else:
-            self.vector = None
+            self.vector = torch.Tensor(self.vector)           
         
         # compute tf
         len_voc = len(self.word2index.values())
@@ -81,8 +82,8 @@ class DataManager:
             self.data[name] = []
             for item in self.text[name]:
                 len_u = len(item[0])
-                indices = [[],[[] for _ in range(len_u)],[]]  #src_len, src, trg
-                indices[0] = [u.count(' ')+1 for u in item[0]]
+                indices = [[],[[] for _ in range(len_u)],[]] #src_len, src, trg
+                indices[0] = [u.count(' ')+1 for u in item[0]] # on purpose
                 max_u_len = max(indices[0])
                 # history
                 for i in range(len_u):
@@ -105,7 +106,7 @@ class DataManager:
         for item in datas:
             src_len, src, trg = item
             tensor_src_len, tensor_src, tensor_trg = torch.LongTensor(src_len), \
-                                                    torch.LongTensor(src),torch.LongTensor(trg)
+                                                    torch.LongTensor(src), torch.LongTensor(trg)
             src_seq_lens.append(tensor_src_len)
             src_seqs.append(tensor_src)
             trg_seqs.append(tensor_trg)
@@ -180,23 +181,23 @@ def pad_packed_collate(batch_data):
         return padded_seqs, lengths
     
     def hierarchical_merge(sequences, sequence_lengths):
-        lengths, utterance_lengths = merge(sequence_lengths)
-        padded_seqs = torch.zeros(len(sequences), max(utterance_lengths), lengths.max().item()).long()
+        lengths = torch.stack(sequence_lengths)
+        utterance_length = lengths.shape[1]
+        padded_seqs = torch.zeros(len(sequences), utterance_length, lengths.max().item()).long()
         for i, seq in enumerate(sequences):
-            utterance_end = utterance_lengths[i]
             word_end = max(lengths[i]).item()
-            padded_seqs[i, :utterance_end, :word_end] = seq
-        return padded_seqs, lengths, utterance_lengths
+            padded_seqs[i, :utterance_length, :word_end] = seq
+        return padded_seqs, lengths
     
     # sort a list by sequence length (descending order) to use pack_padded_sequence
     batch_data.sort(key=lambda x: len(x[0]), reverse=True)
 
     # seperate source and target sequences    
     src_seq_lens, src_seqs, trg_seqs, trg_stops, trg_tfs = zip(*batch_data)
-    src_seqs, src_seq_lens, src_uttr_lens = hierarchical_merge(src_seqs, src_seq_lens)
+    src_seqs, src_lens = hierarchical_merge(src_seqs, src_seq_lens)
     trg_seqs, trg_lens = merge(trg_seqs)
     trg_stops, _ = merge(trg_stops)
-    return (src_seqs.to(device=device), src_seq_lens.to(device=device), 
-            torch.LongTensor(src_uttr_lens).to(device=device), trg_seqs.to(device=device), trg_lens, 
+    return (src_seqs.to(device=device), src_lens.to(device=device), 
+            trg_seqs.to(device=device), trg_lens, 
             trg_stops.to(device=device), torch.stack(trg_tfs).to(device=device))
     
