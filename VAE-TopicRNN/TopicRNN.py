@@ -45,15 +45,15 @@ class TopicRNN(nn.Module):
         self.text_decoder = nn.Linear(nhid, nvoc)
         self.topic_decoder = nn.Linear(ntopic, nvoc)
 
-    def forward(self, x, x_len, y, y_len, y_tf, training=True):
+    def forward(self, x, x_len, y, y_len, x_tf, training=True):
         """
         Parameters
         ----------
         x : (batch, sequence length, utterance length)
         x_len : (batch, sequence length)
+        x_tf: (batch, nonstop vocabulary size)
         y : (batch, target sequence length)
         y_len : (batch)
-        y_tf: (batch, nonstop vocabulary size)
         """     
         batch_size = x.shape[0]
         sequence_size = x.shape[1]
@@ -63,7 +63,7 @@ class TopicRNN(nn.Module):
             context[t] = hidden
         _, hidden = self.rnn_context(context) #, (nlayer*ndir, batch, H)
         
-        mu, log_sigma = self.encode(y_tf) #(batch, E), (batch, E)
+        mu, log_sigma = self.encode(x_tf) #(batch, E), (batch, E)
         # Compute noisy topic proportions given Gaussian parameters.
         Z = self.reparameterize(mu, log_sigma) #(batch, E)
         theta = F.softmax(self.fc_theta(Z), dim=1) #(batch, K)

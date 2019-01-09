@@ -101,7 +101,7 @@ class DataManager:
         datas = self.data[name]
         src_seq_lens = []
         src_seqs, trg_seqs = [], []
-        trg_stops, trg_tfs = [], []
+        trg_stops, src_tfs = [], []
         nonstop_voc_size = len(self.index2nonstop)
         for item in datas:
             src_len, src, trg = item
@@ -117,15 +117,18 @@ class DataManager:
                     trg_stop[i] = 1
             trg_stops.append(trg_stop)
             
-            trg_tf = torch.zeros(nonstop_voc_size)
-            for i, index in enumerate(trg):
-                if trg_stop[i].item() == 0:
-                    trg_tf[self.index2nonstop[index]] += 1
-            if trg_tf.sum().item() > 0:
-                trg_tf /= trg_tf.sum()
-            trg_tfs.append(trg_tf)
+            src_tf = torch.zeros(nonstop_voc_size)
+            for j, uttr in enumerate(src):
+                for i, index in enumerate(uttr):
+                    if i == src_len[j]:
+                        break
+                    if index not in self.stop_words_index:
+                        src_tf[self.index2nonstop[index]] += 1
+            if src_tf.sum().item() > 0:
+                src_tf /= src_tf.sum()
+            src_tfs.append(src_tf)
             
-        dataset = Dataset(src_seq_lens, src_seqs, trg_seqs, trg_stops, trg_tfs)
+        dataset = Dataset(src_seq_lens, src_seqs, trg_seqs, trg_stops, src_tfs)
         dataloader = data.DataLoader(dataset, batch_size, True, collate_fn=pad_packed_collate)
         return dataloader
             
@@ -152,12 +155,12 @@ class DataManager:
 
 class Dataset(data.Dataset):
     
-    def __init__(self, src_seq_lens, src_seqs, trg_seqs, trg_stops, trg_tfs):
+    def __init__(self, src_seq_lens, src_seqs, trg_seqs, trg_stops, src_tfs):
         self.src_seq_lens = src_seq_lens
         self.src_seqs = src_seqs
         self.trg_seqs = trg_seqs
         self.trg_stops = trg_stops
-        self.trg_tfs = trg_tfs
+        self.src_tfs = src_tfs
         self.num_total_seqs = len(src_seqs)
         
     def __getitem__(self, index):
@@ -165,8 +168,8 @@ class Dataset(data.Dataset):
         src_seq = self.src_seqs[index]
         trg_seq = self.trg_seqs[index]
         trg_stop = self.trg_stops[index]
-        trg_tf = self.trg_tfs[index]
-        return src_seq_len, src_seq, trg_seq, trg_stop, trg_tf
+        src_tf = self.src_tfs[index]
+        return src_seq_len, src_seq, trg_seq, trg_stop, src_tf
     
     def __len__(self):
         return self.num_total_seqs
@@ -193,11 +196,11 @@ def pad_packed_collate(batch_data):
     batch_data.sort(key=lambda x: len(x[0]), reverse=True)
 
     # seperate source and target sequences    
-    src_seq_lens, src_seqs, trg_seqs, trg_stops, trg_tfs = zip(*batch_data)
+    src_seq_lens, src_seqs, trg_seqs, trg_stops, src_tfs = zip(*batch_data)
     src_seqs, src_lens = hierarchical_merge(src_seqs, src_seq_lens)
     trg_seqs, trg_lens = merge(trg_seqs)
     trg_stops, _ = merge(trg_stops)
     return (src_seqs.to(device=device), src_lens.to(device=device), 
             trg_seqs.to(device=device), trg_lens, 
-            trg_stops.to(device=device), torch.stack(trg_tfs).to(device=device))
+            trg_stops.to(device=device), torch.stack(src_tfs).to(device=device))
     
