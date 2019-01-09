@@ -14,7 +14,7 @@ def getParser():
     parser.add_argument('--teacher', type=float, default=0.5, help="Teacher forcing ratio")
     parser.add_argument('--seed', type=int, default=1, help="Random seed")
     parser.add_argument('--rnn', type=str, default='GRU', help="Rnn cell type")
-    parser.add_argument('--epoch', type=int, default=100, help="Max number of epoch")
+    parser.add_argument('--epoch', type=int, default=500, help="Max number of epoch")
     parser.add_argument('--topic', type=int, default=20, help="Number of topics")
     parser.add_argument('--embed', type=int, default=300, help="Dimension of word vector")
     parser.add_argument('--rnn_dim', type=int, default=300, help="Dimension of hidden units of the RNN")

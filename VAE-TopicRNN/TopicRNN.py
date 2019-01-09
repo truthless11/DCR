@@ -161,6 +161,8 @@ class Encoder(nn.Module):
         if self.variable_lengths:
             embedded = pack_padded_sequence(embedded, input_lengths, batch_first=True)
         output, hidden = self.rnn(embedded)
+        if self.rnn_cell == nn.LSTM:
+            hidden = hidden[0]
         if self.variable_lengths:
             hidden = torch.transpose(hidden, 0, 1)[unsort_index]
             hidden = torch.transpose(hidden, 0, 1)
