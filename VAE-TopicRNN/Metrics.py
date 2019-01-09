@@ -11,7 +11,7 @@ import torch.nn.functional as F
 
 smoothie = SmoothingFunction().method4
 
-def blue(refs, hyps, lens):
+def bleu(refs, hyps, lens):
     '''
     ref1 = ['a', 'quick', 'brown', 'fox', 'jumped', 'over', 'the', 'lazy', 'dog']
     ref2 = ['quick', 'brown', 'dogs', 'jump', 'over', 'the', 'lazy', 'fox']
@@ -20,7 +20,11 @@ def blue(refs, hyps, lens):
     '''
     score = 0
     for i, l in enumerate(lens):
-        ref, hyp = refs[i, :l].tolist(), hyps[i, :l].tolist()
+        ref = refs[i, :(l-1)].tolist()
+        hyp = hyps[i].tolist()
+        if '<EOS>' in hyp:
+            index = hyp.index('<EOS>')
+            hyp = hyp[:index]
         score += sentence_bleu([ref], hyp, smoothing_function=smoothie)
     return score
 

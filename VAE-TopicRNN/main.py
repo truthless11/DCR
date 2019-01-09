@@ -9,7 +9,7 @@ from TopicRNN import TopicRNN
 from TopicOptimizer import loss_function
 from DataManager import DataManager
 from Parser import getParser
-from Metrics import blue, language_model_p, perplexity
+from Metrics import bleu, language_model_p, perplexity
 import sys, os
 from tqdm import tqdm
 import torch
@@ -52,9 +52,9 @@ if not args.test:
         CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
         for i, data in pbar:
             optimizer.zero_grad()
-            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], 
-                                                             data[3], data[4], data[5])
-            CE, KLD, SCE = loss_function(word_p, data[4], indicator_p, data[6], mu, logvar, data[5])
+            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3],
+                                                             data[4], data[6])
+            CE, KLD, SCE = loss_function(word_p, data[3], indicator_p, data[5], mu, logvar, data[4])
             loss = CE + KLD + SCE
             loss.backward()
             CE_loss += CE.item()
@@ -75,16 +75,16 @@ if not args.test:
         CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
         with torch.no_grad():
             for i, data in pbar:
-                outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], 
-                                                                 data[3], data[4], data[5], 
+                outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3],
+                                                                 data[4], data[6], 
                                                                  training=False)
-                CE, KLD, SCE = loss_function(word_p, data[4], indicator_p, data[6], mu, logvar, data[5])
+                CE, KLD, SCE = loss_function(word_p, data[3], indicator_p, data[5], mu, logvar, data[4])
                 CE_loss += CE.item()
                 KLD_loss += KLD.item()
                 SCE_loss += SCE.item()
                 if i == 0:
                     with open(args.log + '.txt', 'a') as f:
-                        manager.interpret(outputs, data[4], data[5], f)
+                        manager.interpret(outputs, data[3], data[4], f)
             CE_loss /= len(valid)
             KLD_loss /= len(valid)
             SCE_loss /= len(valid)
@@ -97,20 +97,20 @@ if not args.test:
 else:
     model.eval()
     pbar = tqdm(enumerate(test), total=len(test))
-    blue_score, L, p, N = 0, 0, 0, 0
+    bleu_score, L, p, N = 0, 0, 0, 0
     with torch.no_grad():
         for i, data in pbar:
-            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], 
-                                                             data[3], data[4], data[5],
+            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3],
+                                                             data[4], data[6],
                                                              training=False)
-            blue_score += blue(data[4], outputs, data[5])
-            L += len(data[5])
-            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], 
-                                                             data[3], data[4], data[5],
+            bleu_score += bleu(data[3], outputs, data[4])
+            L += len(data[4])
+            outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2], data[3],
+                                                             data[4], data[6],
                                                              training=False)
-            p += language_model_p(data[4], word_p, data[5])
-            N += sum(data[5])
-    blue_score /= L
+            p += language_model_p(data[3], word_p, data[4])
+            N += sum(data[4])
+    bleu_score /= L
     perplexity_score = perplexity(p, N)
-    print('Test set Blue:{:.4f}, Perplexity:{:.4f}'.format(blue_score, perplexity_score))
+    print('Test set bleu:{:.4f}, Perplexity:{:.4f}'.format(bleu_score, perplexity_score))
     

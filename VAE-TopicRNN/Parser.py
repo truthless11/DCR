@@ -24,6 +24,6 @@ def getParser():
     parser.add_argument('--load', type=str, default='', help="Directory to load model")
     parser.add_argument('--save', type=str, default='checkpoints', help="Directory to save model")
     parser.add_argument('--test', type=bool, default=False, help="Set to True to inference")
-    parser.add_argument('--data', type=str, default='data', help="Data directory")
+    parser.add_argument('--data', type=str, default='data2', help="Data directory")
     parser.add_argument('--use_word2vec', type=bool, default=True, help="Set to True to use pretrained word2vec")
     return parser

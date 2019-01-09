@@ -37,28 +37,36 @@ class TopicRNN(nn.Module):
         self.fc_theta = nn.Linear(nhid_infer, ntopic)
            
         if rnn_type in ['LSTM', 'GRU']:
-            self.rnn = getattr(nn, rnn_type)(nembed, nhid, nlayers, dropout=dropout)
+            self.rnn_decoder = getattr(nn, rnn_type)(nembed, nhid, nlayers, dropout=dropout)
+            self.rnn_context = getattr(nn, rnn_type)(nhid, nhid, nlayers, dropout=dropout)
         else:
             raise ValueError("rnn_type should be GRU or LSTM! {0}".format(rnn_type))
         self.fc_stop_word = nn.Linear(nhid, 2)
         self.text_decoder = nn.Linear(nhid, nvoc)
         self.topic_decoder = nn.Linear(ntopic, nvoc)
 
-    def forward(self, x, x_len, x_stop, x_tf, y, y_len, training=True):
+    def forward(self, x, x_seq_len, x_uttr_len, y, y_len, y_tf, training=True):
         """
         Parameters
         ----------
-        x : (batch, sequence length)
-        x_len : (batch)
-        x_stop : (batch, sequence length)
-        x_tf: (batch, nonstop vocabulary size)
+        x : (batch, sequence length, utterance length)
+        x_seq_len : (batch, sequence length)
+        x_uttr_len : (batch)
         y : (batch, target sequence length)
         y_len : (batch)
+        y_tf: (batch, nonstop vocabulary size)
         """     
         batch_size = x.shape[0]
-        context, hidden = self.encoder(x, x_len) #(batch, max_len, H), (nlayer*ndir, batch, H)
+        sequence_size = x.shape[1]
+        context = Variable(torch.zeros(sequence_size, batch_size, self.nhid))
+        for t in range(sequence_size):
+            _, hidden = self.encoder(x[:, t, :], x_seq_len[:, t]) #(batch, max_len, H), (nlayer*ndir, batch, H)
+            context[t] = hidden
         
-        mu, log_sigma = self.encode(x_tf) #(batch, E), (batch, E)
+        context = pack_padded_sequence(context, x_uttr_len)
+        _, hidden = self.rnn_context(context) #(nlayer*ndir, batch, H)
+        
+        mu, log_sigma = self.encode(y_tf) #(batch, E), (batch, E)
         # Compute noisy topic proportions given Gaussian parameters.
         Z = self.reparameterize(mu, log_sigma) #(batch, E)
         theta = F.softmax(self.fc_theta(Z), dim=1) #(batch, K)
@@ -74,7 +82,7 @@ class TopicRNN(nn.Module):
 
         for t in range(target_max_len):
             rnn_input = rnn_input.unsqueeze(0)
-            rnn_output, hidden = self.rnn(rnn_input, hidden) 
+            rnn_output, hidden = self.rnn_decoder(rnn_input, hidden) 
             rnn_output = rnn_output.squeeze(0) #(batch, H)
             
             logits = self.text_decoder(rnn_output) #(batch, C)
@@ -146,11 +154,19 @@ class Encoder(nn.Module):
             - **hidden** (num_layers * num_directions, batch, hidden_size): variable containing the
               features in the hidden state h
         """
+        if self.variable_lengths:
+            sort_index = torch.sort(-input_lengths)[1]
+            unsort_index = torch.sort(sort_index)[1]
+            input_var = input_var[sort_index]
+            input_lengths = input_lengths[sort_index]
         embedded = self.embedding(input_var)
         embedded = self.input_dropout(embedded)
         if self.variable_lengths:
             embedded = pack_padded_sequence(embedded, input_lengths, batch_first=True)
         output, hidden = self.rnn(embedded)
         if self.variable_lengths:
+            hidden = torch.transpose(hidden, 0, 1)[unsort_index]
+            hidden = torch.transpose(hidden, 0, 1)
             output, _ = pad_packed_sequence(output, batch_first=True)
+            output = output[unsort_index]
         return output, hidden
