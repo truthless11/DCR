@@ -141,15 +141,21 @@ class DataManager:
     
     def interpret(self, preds, refs, lens, f):
         i = random.randrange(0, len(lens))
-        l = lens[i]
+        l = max(lens)
         for j in range(l):
-            print(self.index2word[preds[i][j].item()], end=' ')
-            f.write('{0} '.format(self.index2word[preds[i][j].item()]))
+            word = self.index2word[preds[i][j].item()]
+            print(word, end=' ')
+            f.write('{0} '.format(word))
+            if word == '<EOS>':
+                break
         print()
         f.write('\n')
+        
+        l = lens[i]
         for j in range(l):
-            print(self.index2word[refs[i][j].item()], end=' ')
-            f.write('{0} '.format(self.index2word[refs[i][j].item()]))
+            word = self.index2word[refs[i][j].item()] 
+            print(word, end=' ')
+            f.write('{0} '.format(word))
         print()
         f.write('\n')
 

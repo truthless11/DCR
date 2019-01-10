@@ -45,7 +45,7 @@ class TopicRNN(nn.Module):
         self.text_decoder = nn.Linear(nhid, nvoc)
         self.topic_decoder = nn.Linear(ntopic, nvoc)
 
-    def forward(self, x, x_len, y, y_len, x_tf, training=True):
+    def forward(self, x, x_len, y, y_len, x_tf, use_teacher_forcing=None):
         """
         Parameters
         ----------
@@ -73,7 +73,8 @@ class TopicRNN(nn.Module):
         word_probs = Variable(torch.zeros(batch_size, target_max_len, self.nvoc)).to(device=device) 
         indicator_probs = Variable(torch.zeros(batch_size, target_max_len, 2)).to(device=device) 
         
-        use_teacher_forcing = random.random() < self.teacher_forcing if training else False
+        if use_teacher_forcing is None:
+            use_teacher_forcing = random.random() < self.teacher_forcing
         token_input = Variable(torch.LongTensor([GO] * batch_size)).to(device=device) 
         rnn_input = self.encoder.embedding(token_input) #(batch, V)
 

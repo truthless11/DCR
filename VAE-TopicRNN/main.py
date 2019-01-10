@@ -77,7 +77,7 @@ if not args.test:
             for i, data in pbar:
                 outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2],
                                                                  data[3], data[5],
-                                                                 training=False)
+                                                                 use_teacher_forcing=False)
                 CE, KLD, SCE = loss_function(word_p, data[2], indicator_p, data[4], mu, logvar, data[3])
                 CE_loss += CE.item()
                 KLD_loss += KLD.item()
@@ -102,12 +102,12 @@ else:
         for i, data in pbar:
             outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2],
                                                              data[3], data[5],
-                                                             training=False)
+                                                             use_teacher_forcing=False)
             bleu_score += bleu(data[2], outputs, data[3])
             L += len(data[3])
             outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2],
                                                              data[3], data[5],
-                                                             training=False)
+                                                             use_teacher_forcing=True)
             p += language_model_p(data[2], word_p, data[3])
             N += sum(data[3])
     bleu_score /= L
