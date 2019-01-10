@@ -93,11 +93,11 @@ class TopicRNN(nn.Module):
             topic_mask = (1 - stopword_predictions).expand(-1, self.nvoc)
             topic_additions = topic_additions * topic_mask.float()
             
-            probs = F.softmax(logits + topic_additions, dim=1)
-            results = torch.argmax(probs, dim=-1).detach()
+            word_logits = logits + topic_additions
+            results = torch.argmax(word_logits, dim=-1).detach()
             outputs[:, t] = results
                 
-            word_probs[:, t, :] = logits + topic_additions
+            word_probs[:, t, :] = word_logits
             indicator_probs[:, t, :] = stopword_logits
         
             if use_teacher_forcing:

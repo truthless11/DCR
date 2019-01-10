@@ -26,9 +26,11 @@ with open(args.log + '.txt', 'a') as f:
 torch.manual_seed(args.seed)
 
 manager = DataManager(args.data, args.no_wordvec, args.embed, args.context_len)
-train = manager.create_dataset('train', args.batch)
-valid = manager.create_dataset('valid', args.batch)
-test = manager.create_dataset('test', args.batch)
+if not args.test:
+    train = manager.create_dataset('train', args.batch)
+    valid = manager.create_dataset('valid', args.batch)
+else:
+    test = manager.create_dataset('test', args.batch)
 
 model = TopicRNN(args.rnn, manager.vector, len(manager.word2index), len(manager.index2nonstop), 
                  args.embed, args.rnn_dim, args.infer_dim, args.topic, args.teacher)
