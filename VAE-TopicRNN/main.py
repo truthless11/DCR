@@ -21,7 +21,7 @@ argv = sys.argv[1:]
 parser = getParser()
 args, _ = parser.parse_known_args(argv)
 print(args)
-with open(args.log + '.txt', 'a') as f:
+with open('{0}.txt'.format(args.log), 'a') as f:
     f.write('{0}\n'.format(str(args)))
 torch.manual_seed(args.seed)
 
@@ -70,7 +70,8 @@ if not args.test:
                 pbar.set_description('====> Iteration: {}, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}'.format(i,
                                      CE_loss, KLD_loss, SCE_loss))
                 CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
-        torch.save(model, "{0}/model_{1}_{2}".format(args.save, args.log, epoch))
+        if (epoch+1) % 10 == 0:
+            torch.save(model, "{0}/model_{1}_{2}".format(args.save, args.log, epoch))
         
         model.eval()
         pbar = tqdm(enumerate(valid), total=len(valid))
@@ -92,7 +93,7 @@ if not args.test:
             SCE_loss /= len(valid)
             pbar.set_description('====> Valid set loss, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}'.format(CE_loss, 
                                  KLD_loss, SCE_loss))
-        with open(args.log + '.txt', 'a') as f:
+        with open('{0}.txt'.format(args.log), 'a') as f:
             f.write('Epoch:{:d}, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}\n'.format(epoch, CE_loss, 
                                  KLD_loss, SCE_loss))
         
@@ -115,4 +116,16 @@ else:
     bleu_score /= L
     perplexity_score = perplexity(p, N)
     print('Test set bleu:{:.4f}, Perplexity:{:.4f}'.format(bleu_score, perplexity_score))
+    
+    #draw topic words
+    with torch.no_grad():
+        for i in range(args.topic):
+            theta = torch.zeros(1, args.topic).to(device=device)
+            theta[0, i] = 1
+            topic_additions = model.topic_decoder(theta)
+            topv, topi = topic_additions[0].topk(20)
+            with open('{0}_topic.txt'.format(args.log), 'a') as f:
+                for index in topi:
+                    f.write('{0} '.format(manager.index2word[index.item()]))
+                f.write('\n')
     
