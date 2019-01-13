@@ -86,7 +86,7 @@ if not args.test:
                 KLD_loss += KLD.item()
                 SCE_loss += SCE.item()
                 if i == 0:
-                    with open(args.log + '.txt', 'a') as f:
+                    with open('{0}.txt'.format(args.log), 'a') as f:
                         manager.interpret(outputs, data[2], data[3], f)
             CE_loss /= len(valid)
             KLD_loss /= len(valid)

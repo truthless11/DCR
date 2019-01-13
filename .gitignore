@@ -2,6 +2,9 @@
 *.txt
 *.json
 
+# Baselines
+baselines/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
