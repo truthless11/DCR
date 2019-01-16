@@ -133,7 +133,7 @@ class DataManager:
         dataloader = data.DataLoader(dataset, batch_size, True, collate_fn=pad_packed_collate)
         return dataloader
             
-    def compute_stopword(self, y):
+    def get_stopword(self, y):
         res = torch.zeros_like(y).to(device=device)
         for i, row in enumerate(y):
             words_index = row.tolist()

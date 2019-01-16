@@ -115,6 +115,12 @@ class TopicRNN(nn.Module):
         std = torch.exp(0.5*logvar)
         eps = torch.randn_like(std).to(device=device)
         return eps.mul(std).add_(mu)
+    
+    def get_topic_distribution(self, x_tf):       
+        mu, log_sigma = self.encode(x_tf)
+        Z = self.reparameterize(mu, log_sigma)
+        theta = F.softmax(self.fc_theta(Z), dim=1)
+        return theta
 
 class Encoder(nn.Module):
     def __init__(self, vocab_size, embed_size, hidden_size, input_dropout_p=0, dropout_p=0, n_layers=1, 

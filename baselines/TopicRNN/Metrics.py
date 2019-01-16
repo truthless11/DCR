@@ -8,6 +8,7 @@ Created on Tue Jan  1 11:56:26 2019
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 import numpy as np
 import torch.nn.functional as F
+from DataManager import EOS
 
 smoothie = SmoothingFunction().method4
 
@@ -22,8 +23,8 @@ def bleu(refs, hyps, lens):
     for i, l in enumerate(lens):
         ref = refs[i, :(l-1)].tolist()
         hyp = hyps[i].tolist()
-        if '<EOS>' in hyp:
-            index = hyp.index('<EOS>')
+        if EOS in hyp:
+            index = hyp.index(EOS)
             hyp = hyp[:index]
         score += sentence_bleu([ref], hyp, smoothing_function=smoothie)
     return score
