@@ -52,7 +52,7 @@ if not args.test:
         model.train()
         pbar = tqdm(enumerate(train), total=len(train))
         CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
-		bleu_score, L, p, N = 0, 0, 0, 0
+        bleu_score, L, p, N = 0, 0, 0, 0
         for i, data in pbar:
             optimizer.zero_grad()
             outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2],

@@ -22,7 +22,7 @@ symbol_list = {
     "[value_place]",
     "[value_day]",
     "[value_count]",
-	"[train_id]"
+    "[train_id]"
 }
 
 # all the values in "entity_attr_list" almost only appear in system's utterence, so we remove them from user's utterence
