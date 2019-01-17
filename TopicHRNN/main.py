@@ -70,12 +70,13 @@ if not args.test:
                 pbar.set_description('====> Iteration: {}, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}'.format(i,
                                      CE_loss, KLD_loss, SCE_loss))
                 CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
-        if (epoch+1) % 10 == 0:
+        if (epoch+1) % args.save_per_batch == 0:
             torch.save(model, "{0}/model_{1}_{2}".format(args.save, args.log, epoch))
         
         model.eval()
         pbar = tqdm(enumerate(valid), total=len(valid))
         CE_loss, KLD_loss, SCE_loss = 0., 0., 0.
+        bleu_score, L, p, N = 0, 0, 0, 0
         with torch.no_grad():
             for i, data in pbar:
                 outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2],
@@ -88,14 +89,23 @@ if not args.test:
                 if i == 0:
                     with open('{0}.txt'.format(args.log), 'a') as f:
                         manager.interpret(outputs, data[2], data[3], f)
+                bleu_score += bleu(data[2], outputs, data[3])
+                L += len(data[3])
+                outputs, word_p, indicator_p, mu, logvar = model(data[0], data[1], data[2],
+                                                                 data[3], data[5],
+                                                                 use_teacher_forcing=True)
+                p += language_model_p(data[2], word_p, data[3])
+                N += sum(data[3])
             CE_loss /= len(valid)
             KLD_loss /= len(valid)
             SCE_loss /= len(valid)
-            pbar.set_description('====> Valid set loss, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}'.format(CE_loss, 
-                                 KLD_loss, SCE_loss))
+            print('Valid set loss, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}'.format(CE_loss, KLD_loss, SCE_loss))
+            bleu_score /= L
+            perplexity_score = perplexity(p, N)
+            print('Valid set metrics, Bleu:{:.4f}, Perplexity:{:.4f}'.format(bleu_score, perplexity_score))
         with open('{0}.txt'.format(args.log), 'a') as f:
-            f.write('Epoch:{:d}, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}\n'.format(epoch, CE_loss, 
-                                 KLD_loss, SCE_loss))
+            f.write('Epoch:{:d}, CE:{:.2f}, KLD:{:.2f}, SCE:{:.2f}\n'.format(epoch, CE_loss, KLD_loss, SCE_loss))
+            f.write('Bleu:{:.4f}, Perplexity:{:.4f}\n'.format(bleu_score, perplexity_score))
         
 else:
     model.eval()
@@ -115,7 +125,7 @@ else:
             N += sum(data[3])
     bleu_score /= L
     perplexity_score = perplexity(p, N)
-    print('Test set bleu:{:.4f}, Perplexity:{:.4f}'.format(bleu_score, perplexity_score))
+    print('Test set metrics, Bleu:{:.4f}, Perplexity:{:.4f}'.format(bleu_score, perplexity_score))
     
     #draw topic words
     with torch.no_grad():
