@@ -21,6 +21,7 @@ def getParser():
     parser.add_argument('--infer_dim', type=int, default=100, help="Dimension of the inference network hidden layer")
     parser.add_argument('--batch', type=int, default=32, help="Batch size")
     parser.add_argument('--print_per_batch', type=int, default=20, help="Print results every XXX batches")
+	parser.add_argument('--save_per_batch', type=int, default=10, help="Save model every XXX batches")
     parser.add_argument('--load', type=str, default='', help="Directory to load model")
     parser.add_argument('--save', type=str, default='checkpoints', help="Directory to save model")
     parser.add_argument('--test', type=bool, default=False, help="Set to True to inference")

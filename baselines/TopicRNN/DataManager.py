@@ -123,13 +123,6 @@ class DataManager:
         dataset = Dataset(src_seqs, trg_seqs, trg_stops, src_tfs)
         dataloader = data.DataLoader(dataset, batch_size, True, collate_fn=pad_packed_collate)
         return dataloader
-            
-    def compute_stopword(self, y):
-        res = torch.zeros_like(y).to(device=device)
-        for i, row in enumerate(y):
-            words_index = row.tolist()
-            res[i] = torch.LongTensor([int(index in self.stop_words_index) for index in words_index])
-        return res
     
     def interpret(self, preds, refs, lens, f):
         i = random.randrange(0, len(lens))
