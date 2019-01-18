@@ -43,7 +43,7 @@ class DataManager:
         wordssorted = sorted(wordscount.items(), key = lambda d: (d[1],d[0]), reverse=True) 
         self.word2index = {'<PAD>':0, '<UNK>':1, '<GO>':2, '<EOS>':3}
         for i, (key, value) in enumerate(wordssorted):
-            if value == 20:
+            if value <= 20:
                 break
             self.word2index[key] = i + 4 #PAD,UNK,GO,EOS
         print("Voc size {0}".format(len(self.word2index)))

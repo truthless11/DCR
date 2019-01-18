@@ -9,7 +9,7 @@ from HERD import HERD
 from Optimizer import loss_function
 from DataManager import DataManager
 from Parser import getParser
-from Metrics import bleu, language_model_p, perplexity
+from Metrics import bleu, language_model_p, perplexity, entity_recall
 import sys, os
 from tqdm import tqdm
 import torch
@@ -96,6 +96,7 @@ else:
     model.eval()
     pbar = tqdm(enumerate(test), total=len(test))
     bleu_score, L, p, N = 0, 0, 0, 0
+    acc, cnt = 0, 0
     with torch.no_grad():
         for i, data in pbar:
             outputs, word_p = model(data[0], data[1], data[2], data[3], use_teacher_forcing=False)
@@ -104,7 +105,12 @@ else:
             outputs, word_p = model(data[0], data[1], data[2], data[3], use_teacher_forcing=True)
             p += language_model_p(data[2], word_p, data[3])
             N += sum(data[3])
+            acc_batch, cnt_batch = entity_recall(data[4], outputs)
+            acc += acc_batch
+            cnt += cnt_batch
     bleu_score /= L
     perplexity_score = perplexity(p, N)
-    print('Test set metrics, Bleu:{:.4f}, Perplexity:{:.4f}'.format(bleu_score, perplexity_score))
+    ent_recall = acc / cnt
+    print('Test set metrics, Bleu:{:.4f}, Perplexity:{:.4f}, Entity Recall:{:.4f}'.format(
+            bleu_score, perplexity_score, ent_recall))
     

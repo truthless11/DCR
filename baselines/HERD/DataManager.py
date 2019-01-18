@@ -22,13 +22,19 @@ class DataManager:
                
         #read text
         self.text = {}
+        self.entity = {}
         for name in ["train", "valid", "test"]:
             self.text[name] = []
+            self.entity[name] = []
             with open("{0}/{1}.txt".format(path, name)) as fl:
                 for line in fl:
                     utterances = line.strip().lower().split('\t')
                     utterances = [''] * (context_len - len(utterances)) + utterances
                     self.text[name].append([utterances[-context_len:-1], utterances[-1]])
+            with open("{0}/{1}_ent.txt".format(path, name)) as fl:
+                for line in fl:
+                    ents = eval(line)
+                    self.entity[name].append(ents)
 
         #arrange words
         wordscount = {}
@@ -44,9 +50,18 @@ class DataManager:
         wordssorted = sorted(wordscount.items(), key = lambda d: (d[1],d[0]), reverse=True) 
         self.word2index = {'<PAD>':0, '<UNK>':1, '<GO>':2, '<EOS>':3}
         for i, (key, value) in enumerate(wordssorted):
-            if value == 20:
+            if value <= 20:
                 break
             self.word2index[key] = i + 4 #PAD,UNK,GO,EOS
+        i += 4
+        for name in ['train', 'valid']:
+            entities = self.entity[name]
+            for item in entities:
+                for word in item:
+                    if word not in self.word2index:
+                        self.word2index[word] = i
+                        i += 1
+        assert (i == len(self.word2index))
         print("Voc size {0}".format(len(self.word2index)))
         self.index2word = dict((v, k) for k, v in self.word2index.items())
         
@@ -68,9 +83,9 @@ class DataManager:
         self.data = {}
         for name in ["train", "valid", "test"]:
             self.data[name] = []
-            for item in self.text[name]:
+            for item, item_ent in zip(self.text[name], self.entity[name]):
                 len_u = len(item[0])
-                indices = [[],[[] for _ in range(len_u)],[]] #src_len, src, trg
+                indices = [[],[[] for _ in range(len_u)],[],[]] #src_len, src, trg, trg_ent
                 indices[0] = [u.count(' ')+1 for u in item[0]] # on purpose
                 max_u_len = max(indices[0])
                 # history
@@ -83,21 +98,25 @@ class DataManager:
                 indices[2] = [self.word2index[word] if word in self.word2index 
                               else UNK for word in words]
                 indices[2].append(EOS)
+                indices[3] = [self.word2index[word] if word in self.word2index 
+                              else UNK for word in item_ent]
                 self.data[name].append(indices)
            
     def create_dataset(self, name, batch_size):
         datas = self.data[name]
         src_seq_lens = []
         src_seqs, trg_seqs = [], []
+        trg_ents = []
         for item in datas:
-            src_len, src, trg = item
+            src_len, src, trg, trg_ent = item
             tensor_src_len, tensor_src, tensor_trg = torch.LongTensor(src_len), \
                                                     torch.LongTensor(src), torch.LongTensor(trg)
             src_seq_lens.append(tensor_src_len)
             src_seqs.append(tensor_src)
             trg_seqs.append(tensor_trg)
+            trg_ents.append(trg_ent)
             
-        dataset = Dataset(src_seq_lens, src_seqs, trg_seqs)
+        dataset = Dataset(src_seq_lens, src_seqs, trg_seqs, trg_ents)
         dataloader = data.DataLoader(dataset, batch_size, True, collate_fn=pad_packed_collate)
         return dataloader
     
@@ -123,17 +142,19 @@ class DataManager:
 
 class Dataset(data.Dataset):
     
-    def __init__(self, src_seq_lens, src_seqs, trg_seqs):
+    def __init__(self, src_seq_lens, src_seqs, trg_seqs, trg_ents):
         self.src_seq_lens = src_seq_lens
         self.src_seqs = src_seqs
         self.trg_seqs = trg_seqs
+        self.trg_ents = trg_ents
         self.num_total_seqs = len(src_seqs)
         
     def __getitem__(self, index):
         src_seq_len = self.src_seq_lens[index]
         src_seq = self.src_seqs[index]
         trg_seq = self.trg_seqs[index]
-        return src_seq_len, src_seq, trg_seq
+        trg_ent = self.trg_ents[index]
+        return src_seq_len, src_seq, trg_seq, trg_ent
     
     def __len__(self):
         return self.num_total_seqs
@@ -160,9 +181,9 @@ def pad_packed_collate(batch_data):
     batch_data.sort(key=lambda x: len(x[0]), reverse=True)
 
     # seperate source and target sequences    
-    src_seq_lens, src_seqs, trg_seqs = zip(*batch_data)
+    src_seq_lens, src_seqs, trg_seqs, trg_ents = zip(*batch_data)
     src_seqs, src_lens = hierarchical_merge(src_seqs, src_seq_lens)
     trg_seqs, trg_lens = merge(trg_seqs)
     return (src_seqs.to(device=device), src_lens.to(device=device), 
-            trg_seqs.to(device=device), trg_lens)
+            trg_seqs.to(device=device), trg_lens, trg_ents)
     

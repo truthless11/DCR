@@ -54,3 +54,16 @@ def language_model_p(refs, word_p, lens):
 
 def perplexity(p, N):
     return np.exp(-1 / N * p)
+
+def entity_recall(refs, hyps):
+    acc, cnt = 0, 0
+    for i, ref in enumerate(refs):
+        hyp = hyps[i].tolist()
+        if EOS in hyp:
+            index = hyp.index(EOS)
+            hyp = hyp[:index]
+        for ent in ref:
+            cnt += 1
+            if ent in hyp:
+                acc += 1
+    return acc, cnt
