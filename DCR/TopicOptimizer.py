@@ -11,14 +11,16 @@ from torch.autograd import Variable
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-def loss_function(word_probs, y, indicator_probs, y_stop, mu, logvar, lens):
+def loss_function(word_probs, y, indicator_probs, y_stop, mu, logvar, lens, entity_p, entity_grd, entity_mask):
     max_len = max(lens)
     expand_len = [([1]*l + [0]*(max_len-l)) for l in lens]
     mask = Variable(torch.Tensor(expand_len)).to(device=device)
     CE = sequence_cross_entropy_with_logits(word_probs, y, mask)
     KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     SCE = sequence_cross_entropy_with_logits(indicator_probs, y_stop, mask)
-    return CE, KLD, SCE
+    ENTCE = sequence_cross_entropy_with_logits(entity_p, entity_grd, entity_mask)
+    #ENTCE = sequence_cross_entropy_with_logits(entity_p, entity_grd, mask)
+    return CE, KLD, SCE, ENTCE
 
 def sequence_cross_entropy_with_logits(logits: torch.FloatTensor,
                                        targets: torch.LongTensor,
