@@ -10,5 +10,5 @@ Deep Conversational Recommender in Travel
 }
 ```
 
-Please unzip the [``data.zip``]() under the subdirectory ``DCR``
+Please unzip the [``DCRdata.zip``](https://drive.google.com/open?id=1bv-AcHOM6hZV6sLrBWLY5jmc792rNoYS) under the subdirectory ``DCR/data``
 
